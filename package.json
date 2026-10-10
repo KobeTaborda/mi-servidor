@@ -1,7 +1,7 @@
 {
   "name": "mi-servidor",
   "version": "1.0.0",
-  "description": "Backend CRUD de usuarios/personas con Node.js, Express y MySQL",
+  "description": "Backend CRUD de usuarios/personas con Node.js, Express y Sequelize (MySQL o SQL Server)",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -10,7 +10,9 @@
   "keywords": [
     "node",
     "express",
+    "sequelize",
     "mysql",
+    "mssql",
     "crud"
   ],
   "author": "Kobe Taborda",
@@ -19,6 +21,9 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
-    "mysql2": "^3.24.5"
+    "mssql": "^11.0.1",
+    "mysql2": "^3.24.5",
+    "sequelize": "^6.37.3",
+    "tedious": "^18.6.1"
   }
 }

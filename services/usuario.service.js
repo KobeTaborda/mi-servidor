@@ -1,5 +1,6 @@
 // Servicio: contiene la lógica de negocio (validaciones y reglas)
-const UsuarioModel = require("../models/usuario.model");
+// Accede a la base de datos a través del modelo de Sequelize (ORM)
+const Usuario = require("../models/usuario.model");
 
 const TIPOS_DOC = ["CC", "TI", "CE", "PA"];
 const REGEX_CORREO = /^[^\s@,;]+@[^\s@,;]+\.[a-zA-Z]{2,}$/;
@@ -43,13 +44,22 @@ function validarPersona(datos = {}) {
     return persona;
 }
 
+// Si dos peticiones intentan guardar el mismo documento a la vez, la BD lo rechaza
+// (índice único) y aquí se traduce al mismo error 409 de siempre
+function traducirErrorBD(error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+        return new ErrorServicio("Ya existe un usuario con ese documento", 409);
+    }
+    return error;
+}
+
 const UsuarioService = {
     async getAll() {
-        return UsuarioModel.getAll();
+        return Usuario.findAll({ order: [["id", "ASC"]] });
     },
 
     async getById(id) {
-        const persona = await UsuarioModel.getById(id);
+        const persona = await Usuario.findByPk(id);
         if (!persona) throw new ErrorServicio("Usuario no encontrado", 404);
         return persona;
     },
@@ -57,29 +67,39 @@ const UsuarioService = {
     async create(datos) {
         const persona = validarPersona(datos);
 
-        const existe = await UsuarioModel.getByDocumento(persona.tipoDoc, persona.numDoc);
+        const existe = await Usuario.findOne({
+            where: { tipoDoc: persona.tipoDoc, numDoc: persona.numDoc }
+        });
         if (existe) throw new ErrorServicio("Ya existe un usuario con ese documento", 409);
 
-        const id = await UsuarioModel.create(persona);
-        return { id, ...persona };
+        try {
+            return await Usuario.create(persona);
+        } catch (error) {
+            throw traducirErrorBD(error);
+        }
     },
 
     async update(id, datos) {
-        await this.getById(id); // lanza 404 si no existe
+        const actual = await this.getById(id); // lanza 404 si no existe
         const persona = validarPersona(datos);
 
         // Evita que al actualizar se use el documento de otra persona
-        const otro = await UsuarioModel.getByDocumento(persona.tipoDoc, persona.numDoc);
+        const otro = await Usuario.findOne({
+            where: { tipoDoc: persona.tipoDoc, numDoc: persona.numDoc }
+        });
         if (otro && otro.id !== Number(id)) {
             throw new ErrorServicio("Ese documento ya pertenece a otro usuario", 409);
         }
 
-        await UsuarioModel.update(id, persona);
-        return { id: Number(id), ...persona };
+        try {
+            return await actual.update(persona);
+        } catch (error) {
+            throw traducirErrorBD(error);
+        }
     },
 
     async delete(id) {
-        const filas = await UsuarioModel.delete(id);
+        const filas = await Usuario.destroy({ where: { id } });
         if (filas === 0) throw new ErrorServicio("Usuario no encontrado", 404);
     }
 };

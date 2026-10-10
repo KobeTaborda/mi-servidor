@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config({ quiet: true });
 
-const { probarConexion } = require("./config/db");
+const sequelize = require("./config/database");
 const usuarioRoutes = require("./routes/usuario.routes");
 
 const app = express();
@@ -33,14 +33,17 @@ app.use((err, req, res, next) => {
     res.status(500).json({ mensaje: "Error interno del servidor" });
 });
 
-// Inicia el servidor solo si la base de datos responde
-probarConexion()
+// Conecta con la base de datos, crea la tabla "usuarios" si no existe (sync)
+// e inicia el servidor solo si todo responde
+sequelize.sync()
     .then(() => {
+        console.log(`Base de datos conectada (${process.env.DB_TYPE || "mysql"})`);
         app.listen(PORT, () => {
             console.log(`Servidor corriendo en http://localhost:${PORT}`);
         });
     })
     .catch((error) => {
-        console.error("No se pudo conectar a MySQL:", error.message);
+        console.error("No se pudo conectar a la base de datos:");
+        console.error(error.original || error);
         process.exit(1);
     });

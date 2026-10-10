@@ -1,54 +1,30 @@
-// Modelo: solo se encarga de hablar con la base de datos (consultas SQL)
-const { pool } = require("../config/db");
+// Modelo: define la estructura de la tabla "usuarios" con Sequelize (ORM).
+// Ya no se escribe SQL a mano: Sequelize genera las consultas según el motor configurado.
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-const CAMPOS = "id, tipoDoc, numDoc, nombres, apellidos, direccion, ciudad, fechaNac, correo";
-
-// Se usan consultas parametrizadas (?) para evitar inyección SQL
-const UsuarioModel = {
-    async getAll() {
-        const [filas] = await pool.query(`SELECT ${CAMPOS} FROM usuarios ORDER BY id`);
-        return filas;
+const Usuario = sequelize.define("Usuario", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
+    tipoDoc: { type: DataTypes.STRING(2), allowNull: false },
+    numDoc: { type: DataTypes.STRING(20), allowNull: false },
+    nombres: { type: DataTypes.STRING(100), allowNull: false },
+    apellidos: { type: DataTypes.STRING(100), allowNull: false },
+    direccion: { type: DataTypes.STRING(150) },
+    ciudad: { type: DataTypes.STRING(50) },
+    // DATEONLY devuelve la fecha como texto "AAAA-MM-DD" (lo que espera el input type="date")
+    fechaNac: { type: DataTypes.DATEONLY, allowNull: false },
+    correo: { type: DataTypes.STRING(120), allowNull: false }
+}, {
+    tableName: "usuarios",
+    timestamps: false,
+    indexes: [
+        // Una persona se identifica por tipo + número de documento (igual que en el formulario)
+        { name: "uq_documento", unique: true, fields: ["tipoDoc", "numDoc"] }
+    ]
+});
 
-    async getById(id) {
-        const [filas] = await pool.query(`SELECT ${CAMPOS} FROM usuarios WHERE id = ?`, [id]);
-        return filas[0];
-    },
-
-    async getByDocumento(tipoDoc, numDoc) {
-        const [filas] = await pool.query(
-            `SELECT ${CAMPOS} FROM usuarios WHERE tipoDoc = ? AND numDoc = ?`,
-            [tipoDoc, numDoc]
-        );
-        return filas[0];
-    },
-
-    async create(persona) {
-        const [resultado] = await pool.query(
-            `INSERT INTO usuarios (tipoDoc, numDoc, nombres, apellidos, direccion, ciudad, fechaNac, correo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [persona.tipoDoc, persona.numDoc, persona.nombres, persona.apellidos,
-             persona.direccion, persona.ciudad, persona.fechaNac, persona.correo]
-        );
-        return resultado.insertId;
-    },
-
-    async update(id, persona) {
-        const [resultado] = await pool.query(
-            `UPDATE usuarios
-             SET tipoDoc = ?, numDoc = ?, nombres = ?, apellidos = ?, direccion = ?,
-                 ciudad = ?, fechaNac = ?, correo = ?
-             WHERE id = ?`,
-            [persona.tipoDoc, persona.numDoc, persona.nombres, persona.apellidos,
-             persona.direccion, persona.ciudad, persona.fechaNac, persona.correo, id]
-        );
-        return resultado.affectedRows;
-    },
-
-    async delete(id) {
-        const [resultado] = await pool.query("DELETE FROM usuarios WHERE id = ?", [id]);
-        return resultado.affectedRows;
-    }
-};
-
-module.exports = UsuarioModel;
+module.exports = Usuario;
